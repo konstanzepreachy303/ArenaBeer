@@ -1,0 +1,2 @@
+import { Sidebar } from "@/components/sidebar";import { getSession } from "@/lib/auth";import { redirect } from "next/navigation";
+export default async function DashboardLayout({children}:{children:React.ReactNode}){const s=await getSession();if(!s)redirect('/login');return <div className="min-h-screen bg-transparent md:flex"><Sidebar/><main className="min-w-0 flex-1 p-4 sm:p-7 lg:p-9"><div className="mx-auto max-w-[1600px]">{children}</div></main></div>}

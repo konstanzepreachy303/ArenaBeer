@@ -1,0 +1,1 @@
+import { NextResponse } from "next/server";import { prisma } from "@/lib/prisma";import { requireSession } from "@/lib/auth";export async function GET(){await requireSession();return NextResponse.json(await prisma.stockMovement.findMany({include:{product:true,user:true},orderBy:{createdAt:"desc"},take:500}))}

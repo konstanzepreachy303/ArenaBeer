@@ -1,0 +1,1 @@
+import { NextResponse } from "next/server";import { prisma } from "@/lib/prisma";import { requireSession } from "@/lib/auth";export async function GET(){await requireSession();const products=await prisma.product.findMany({orderBy:{name:"asc"}});return NextResponse.json(products.map(p=>({...p,stockStatus:p.currentStock===0?"ZERADO":p.currentStock<=p.minimumStock?"BAIXO":"OK"})))}

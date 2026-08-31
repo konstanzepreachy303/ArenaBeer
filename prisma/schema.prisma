@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OPERADOR
+}
+
+enum Status {
+  ATIVO
+  INATIVO
+}
+
+enum Unit {
+  UNIDADE
+  CAIXA
+  PACOTE
+  LITRO
+  KG
+}
+
+enum MovementType {
+  ENTRADA
+  SAIDA
+}
+
+enum MovementReason {
+  COMPRA
+  AJUSTE
+  DEVOLUCAO
+  VENDA
+  PERDA
+  QUEBRA
+  CONSUMO_INTERNO
+  BAIXA_DIARIA
+}
+
+enum DailyBatchStatus {
+  FECHADO
+  REABERTO
+}
+
+model User {
+  id                 String          @id @default(cuid())
+  name               String
+  email              String          @unique
+  passwordHash       String
+  role               Role            @default(OPERADOR)
+  status             Status          @default(ATIVO)
+  mustChangePassword Boolean         @default(true)
+  movements          StockMovement[]
+  dailyBatches       DailyBatch[]
+  auditLogs          AuditLog[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@map("users")
+}
+
+model Product {
+  id           String           @id @default(cuid())
+  name         String
+  internalCode String           @unique
+  unit         Unit
+  currentStock Int              @default(0)
+  minimumStock Int              @default(0)
+  unitCost     Float            @default(0)
+  status       Status           @default(ATIVO)
+  movements    StockMovement[]
+  dailyItems   DailyBatchItem[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@map("products")
+}
+
+model StockMovement {
+  id            String         @id @default(cuid())
+  productId     String
+  userId        String
+  type          MovementType
+  reason        MovementReason
+  quantity      Int
+  previousStock Int
+  newStock      Int
+  observation   String?
+  dailyBatchId  String?
+  product       Product        @relation(fields: [productId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  dailyBatch    DailyBatch?    @relation(fields: [dailyBatchId], references: [id], onDelete: SetNull)
+  movementDate  DateTime       @db.Date
+  createdAt     DateTime       @default(now())
+
+  @@index([productId, movementDate, createdAt])
+  @@index([dailyBatchId])
+  @@map("stock_movements")
+}
+
+model DailyBatch {
+  id            String           @id @default(cuid())
+  userId        String
+  date          DateTime         @default(now())
+  referenceDate String           @unique
+  status        DailyBatchStatus @default(FECHADO)
+  observation   String?
+  user          User             @relation(fields: [userId], references: [id])
+  items         DailyBatchItem[]
+  movements     StockMovement[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@map("daily_batches")
+}
+
+model DailyBatchItem {
+  id            String     @id @default(cuid())
+  dailyBatchId  String
+  productId     String
+  quantity      Int
+  previousStock Int
+  newStock      Int
+  batch         DailyBatch @relation(fields: [dailyBatchId], references: [id])
+  product       Product    @relation(fields: [productId], references: [id])
+  createdAt     DateTime   @default(now())
+
+  @@unique([dailyBatchId, productId])
+  @@map("daily_batch_items")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model Setting {
+  id                  String   @id @default(cuid())
+  companyName         String   @default("Arena Estoque")
+  companyLogo         String?
+  defaultMinimumStock Int      @default(0)
+  allowNegativeStock   Boolean @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("settings")
+}
